@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Linq;
 using System.Threading.Tasks;
 using StreamVideo.Core;
@@ -40,7 +41,7 @@ namespace StreamVideo.ExampleProject.UI
             }
             else
             {
-                SelectFirstWorkingCameraOrDefaultAsync().LogIfFailed();
+                //SelectFirstWorkingCameraOrDefaultAsync().LogIfFailed();
             }
 
             if (!_permissionsManager.HasPermission(PermissionsManager.PermissionType.Microphone))
@@ -57,6 +58,7 @@ namespace StreamVideo.ExampleProject.UI
         }
 
         protected void Start() => ShowMainScreen();
+
 
         protected void OnDestroy()
         {
@@ -93,7 +95,16 @@ namespace StreamVideo.ExampleProject.UI
 
         private PermissionsManager _permissionsManager;
 
-        private void OnCallStarted(IStreamCall call) => ShowCallScreen(call);
+        //private void OnCallStarted(IStreamCall call) => ShowCallScreen(call);
+
+        [SerializeField] private Texture2D _texture1;
+        [SerializeField] private Texture2D _texture2;
+
+        private void OnCallStarted(IStreamCall call)
+        {
+            InitTextureSending();
+            ShowCallScreen(call);
+        }
 
         private void OnCallEnded() => ShowMainScreen();
 
@@ -195,6 +206,27 @@ namespace StreamVideo.ExampleProject.UI
             return true;
 #endif
             return false;
+        }
+
+        private RenderTexture _renderTexture;
+        private Texture2D _currentTexture;
+
+        private void InitTextureSending()
+        {
+            _renderTexture = new RenderTexture(1920, 1080, depth: 0, RenderTextureFormat.ARGB32);
+            _renderTexture.Create();
+            _videoManager.Client.VideoDeviceManager.SelectSource(_renderTexture, enable: true);
+            StartCoroutine(RotateTextures());
+        }
+
+        private IEnumerator RotateTextures()
+        {
+            while (_videoManager.Client != null && _videoManager.Client.ActiveCall != null)
+            {
+                _currentTexture = _currentTexture == _texture1 ? _texture2 : _texture1;
+                Graphics.Blit(_currentTexture, _renderTexture);
+                yield return new WaitForSeconds(0.5f);
+            }
         }
     }
 }
